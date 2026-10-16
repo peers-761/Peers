@@ -1,0 +1,86 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  color: #1B1B18;
+  background: #FCFCFA;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+a {
+  color: inherit;
+}
+
+@media (max-width: 760px) {
+  .desktop-nav {
+    display: none !important;
+  }
+}
+
+/* Anything marked no-print is hidden when printing and while a PDF is being captured. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+body.pdf-capturing .no-print {
+  display: none !important;
+}
+
+/* Reusable hover lift for feature/photo cards across the public site. */
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(22, 33, 94, 0.1);
+  border-color: #16215E !important;
+}
+.photo-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.photo-card:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 14px 30px rgba(22, 33, 94, 0.18);
+}
+
+/* Premium button feel, used across the public site's call-to-action links. */
+.cta-btn {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  display: inline-block;
+}
+.cta-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+.cta-btn:active {
+  transform: translateY(0);
+}
+
+/* Hero entrance — plays once on page load, no scroll trigger needed. */
+@keyframes fadeUpIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up-in {
+  animation: fadeUpIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-up-in { animation: none; }
+}
+
+/* Hero heading scales down gracefully on small phones. */
+.hero-h1 {
+  font-size: 38px;
+}
+@media (max-width: 480px) {
+  .hero-h1 { font-size: 28px; }
+}

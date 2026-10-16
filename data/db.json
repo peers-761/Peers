@@ -1,0 +1,203 @@
+{
+  "notices": [
+    {
+      "id": "n1",
+      "tag": "Admissions",
+      "text": "New session admissions now open for PG through 10th, morning and evening shifts.",
+      "date": "2026-09-03"
+    },
+    {
+      "id": "n2",
+      "tag": "Fee",
+      "text": "Fee vouchers for this month are now available. Please check with the office.",
+      "date": "2026-09-01"
+    },
+    {
+      "id": "n3",
+      "tag": "Event",
+      "text": "Annual parent-teacher meeting scheduled separately for morning and evening students.",
+      "date": "2026-08-28"
+    }
+  ],
+  "feeStructure": {
+    "1": 3200,
+    "2": 3200,
+    "3": 3500,
+    "4": 3500,
+    "5": 3800,
+    "6": 4000,
+    "7": 4200,
+    "8": 4200,
+    "9": 4500,
+    "10": 4800,
+    "Pre 1": 3000,
+    "Pre 2": 3000,
+    "Pre 3": 3000
+  },
+  "teachers": [
+    {
+      "username": "armaanabrar",
+      "password": "031234567890*@",
+      "name": "Armaan Abrar",
+      "assignedClasses": [
+        "9"
+      ]
+    },
+    {
+      "username": "ranaehsaan",
+      "password": "031234567890*@",
+      "name": "Rana Ehsaan",
+      "assignedClasses": [
+        "10"
+      ]
+    }
+  ],
+  "students": {
+    "1": [
+      {
+        "id": "1-01",
+        "name": "Student One",
+        "parentPassword": "5506"
+      },
+      {
+        "id": "1-02",
+        "name": "Student Two",
+        "parentPassword": "5012"
+      }
+    ],
+    "2": [
+      {
+        "id": "2-01",
+        "name": "Student One",
+        "parentPassword": "4657"
+      },
+      {
+        "id": "2-02",
+        "name": "Student Two",
+        "parentPassword": "3286"
+      }
+    ],
+    "3": [],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "9": [
+      {
+        "id": "9-01-6305",
+        "name": "Hamza Tariq",
+        "parentPassword": "3471"
+      },
+      {
+        "id": "9-02-7468",
+        "name": "Bilal Ahmed",
+        "parentPassword": "1791"
+      },
+      {
+        "id": "9-03-2186",
+        "name": "Ayesha Noor",
+        "parentPassword": "9779"
+      },
+      {
+        "id": "9-04-2542",
+        "name": "Zainab Fatima",
+        "parentPassword": "6991"
+      },
+      {
+        "id": "9-05-1950",
+        "name": "Usman Ali",
+        "parentPassword": "9313"
+      },
+      {
+        "id": "9-06-4517",
+        "name": "Hassan Raza",
+        "parentPassword": "1614"
+      },
+      {
+        "id": "9-07-2408",
+        "name": "Fatima Sheikh",
+        "parentPassword": "8104"
+      },
+      {
+        "id": "9-08-7851",
+        "name": "Ahmed Khan",
+        "parentPassword": "2144"
+      }
+    ],
+    "10": [
+      {
+        "id": "10-01-4943",
+        "name": "Ali Hamza",
+        "parentPassword": "2486"
+      },
+      {
+        "id": "10-02-7955",
+        "name": "Sara Malik",
+        "parentPassword": "1968"
+      },
+      {
+        "id": "10-03-3028",
+        "name": "Fahad Iqbal",
+        "parentPassword": "4657"
+      },
+      {
+        "id": "10-04-2013",
+        "name": "Mahnoor Aslam",
+        "parentPassword": "7499"
+      },
+      {
+        "id": "10-05-1812",
+        "name": "Imran Sultan",
+        "parentPassword": "4622"
+      },
+      {
+        "id": "10-06-1763",
+        "name": "Khadija Yousaf",
+        "parentPassword": "3181"
+      },
+      {
+        "id": "10-07-5744",
+        "name": "Bilquis Anwar",
+        "parentPassword": "7867"
+      },
+      {
+        "id": "10-08-3363",
+        "name": "Tariq Mehmood",
+        "parentPassword": "9858"
+      }
+    ],
+    "Pre 1": [
+      {
+        "id": "PG-01",
+        "name": "Student One",
+        "parentPassword": "2824"
+      },
+      {
+        "id": "PG-02",
+        "name": "Student Two",
+        "parentPassword": "1409"
+      }
+    ],
+    "Pre 2": [],
+    "Pre 3": []
+  },
+  "attendance": {},
+  "settings": {
+    "address": "33 School Street, Amir Road, Shadbagh, Lahore",
+    "phone": "",
+    "whatsapp": "",
+    "email": ""
+  },
+  "messages": [],
+  "admissionInquiries": [],
+  "achievements": [],
+  "teacherAttendance": {},
+  "absenceGraceTimers": {},
+  "absenceEscalations": {},
+  "absenceRemarks": [],
+  "inchargeCredentials": {
+    "username": "incharge3311",
+    "password": "031234567890*@"
+  }
+}
