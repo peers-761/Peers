@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { adminOnly } from "../../../lib/guard";
 import { readDB, updateDB } from "../../../lib/data";
 import { sendPushToAdmins } from "../../../lib/push";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const deny = await adminOnly(); if (deny) return deny;
   const db = await readDB();
   return NextResponse.json(Array.isArray(db.contactMessages) ? db.contactMessages : [], { headers: { "Cache-Control": "no-store" } });
 }
@@ -24,6 +26,7 @@ export async function POST(req) {
 }
 
 export async function DELETE(req) {
+  const deny = await adminOnly(); if (deny) return deny;
   const { id } = await req.json();
   await updateDB((db) => {
     db.contactMessages = (Array.isArray(db.contactMessages) ? db.contactMessages : []).filter((m) => m.id !== id);

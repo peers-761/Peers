@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { staffOnly } from "../../../lib/guard";
 import { readDB } from "../../../lib/data";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req) {
+  const deny = staffOnly(); if (deny) return deny;
   const { searchParams } = new URL(req.url);
   const className = searchParams.get("class");
   const studentId = searchParams.get("studentId");

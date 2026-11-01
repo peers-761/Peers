@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { adminOnly } from "../../../lib/guard";
 import { readDB, updateDB, saveImage, deleteImage } from "../../../lib/data";
 import { sendPushToEveryone } from "../../../lib/push";
 
@@ -10,6 +11,7 @@ export async function GET() {
 }
 
 export async function POST(req) {
+  const deny = await adminOnly(); if (deny) return deny;
   const body = await req.json();
   const id = "n" + Date.now();
 
@@ -38,6 +40,7 @@ export async function POST(req) {
 }
 
 export async function DELETE(req) {
+  const deny = await adminOnly(); if (deny) return deny;
   const { id } = await req.json();
   await updateDB((db) => {
     const notice = db.notices.find((n) => n.id === id);

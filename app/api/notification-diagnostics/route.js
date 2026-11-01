@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { adminOnly } from "../../../lib/guard";
 import { readDB } from "../../../lib/data";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const deny = await adminOnly(); if (deny) return deny;
   const db = await readDB();
   const subs = db.pushSubscriptions || [];
 

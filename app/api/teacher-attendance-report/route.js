@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { adminOnly } from "../../../lib/guard";
 import { readDB } from "../../../lib/data";
 import { pktDateStr } from "../../../lib/time";
 import { isSchoolOffDayForDate } from "../../../lib/attendanceSettings";
@@ -22,6 +23,7 @@ function dateRange(from, to) {
 }
 
 export async function GET(req) {
+  const deny = await adminOnly(); if (deny) return deny;
   const { searchParams } = new URL(req.url);
   const today = todayStr();
   const from = searchParams.get("from") || today;

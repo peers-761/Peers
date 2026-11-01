@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { staffOnly } from "../../../lib/guard";
 import { readDB } from "../../../lib/data";
 import { pktDateStr } from "../../../lib/time";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req) {
+  const deny = staffOnly(); if (deny) return deny;
   try {
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date") || pktDateStr();

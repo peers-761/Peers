@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { updateDB } from "../../../lib/data";
+import { SESSION_COOKIE, readSessionValue } from "../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req) {
+  // The role comes from the REAL signed-in session — never from what the
+  // browser claims — so nobody can subscribe themselves as "admin" and
+  // receive the school's private notifications.
+  const session = readSessionValue(cookies().get(SESSION_COOKIE)?.value || "");
+  if (!session) {
+    return NextResponse.json({ error: "Not signed in." }, { status: 401, headers: { "Cache-Control": "no-store" } });
+  }
   const body = await req.json();
-  const { subscription, role, studentId } = body;
+  const { subscription } = body;
+  const role = session.role;
+  const studentId = role === "parent" ? String(session.username).split("__")[1] || null : null;
 
   await updateDB((db) => {
     // Clean up any subscriptions saved in the old format (before role

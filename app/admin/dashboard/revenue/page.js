@@ -73,6 +73,7 @@ export default function RevenuePage() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [openClass, setOpenClass] = useState(null);
+  const [modalFilter, setModalFilter] = useState("all");
   const [resetting, setResetting] = useState(false);
   // Always the REAL current month's collection — fetched once, independent
   // of whatever year/month the admin has filtered the rest of the page to,
@@ -94,6 +95,7 @@ export default function RevenuePage() {
         const due = d.classes?.reduce((t, c) => t + c.due, 0) ?? 0;
         setThisMonth({
           received: cash?.received ?? 0,
+          classes: d.classes || [],
           previousDue: sm.previousDue ?? 0,
           collected,
           due,
@@ -240,6 +242,42 @@ export default function RevenuePage() {
                     <p style={{ margin: "2px 0 0", fontSize: 16, fontWeight: 700, color: "#B91C1C" }}>{thisMonth.unpaidCount} <span style={{ fontSize: 11.5, fontWeight: 400, color: COLORS.muted }}>students</span></p>
                   </div>
                 </div>
+                {thisMonth.classes?.some((c) => c.expected > 0) && (
+                  <div style={{ marginTop: 16 }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: COLORS.navy }}>Class-wise — {MONTH_LABELS[curMonth - 1]} fee</p>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", minWidth: 720, borderCollapse: "collapse", fontSize: 12.5 }}>
+                        <thead>
+                          <tr style={{ background: COLORS.tint, color: COLORS.navy, textAlign: "left" }}>
+                            {["Class", "Paid", "Partly", "Not paid", "Expected", "Collected", "%", "Still due", "Old dues"].map((h) => <th key={h} style={{ padding: "8px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {thisMonth.classes.filter((c) => c.expected > 0 || c.previousDue > 0).map((c) => {
+                            const pr = c.expected > 0 ? Math.min(100, Math.round((c.collected / c.expected) * 100)) : 0;
+                            return (
+                              <tr key={c.className} onClick={() => { setModalFilter("all"); setYear(curYear); setMonth(String(curMonth)); setOpenClass(c.className); }} style={{ borderTop: `1px solid ${COLORS.border}`, cursor: "pointer" }}>
+                                <td style={{ padding: "7px 10px", fontWeight: 600 }}>{c.label}</td>
+                                <td style={{ padding: "7px 10px", color: "#15803D" }}>{c.paidCount}</td>
+                                <td style={{ padding: "7px 10px", color: "#8A5B00" }}>{c.partialCount}</td>
+                                <td style={{ padding: "7px 10px", color: "#B91C1C" }}>{c.unpaidCount}</td>
+                                <td style={{ padding: "7px 10px" }}>{rs(c.expected)}</td>
+                                <td style={{ padding: "7px 10px", color: "#15803D", fontWeight: 600 }}>{rs(c.collected)}</td>
+                                <td style={{ padding: "7px 10px", minWidth: 90 }}>
+                                  <div style={{ height: 7, background: "#E8E6DC", borderRadius: 4, overflow: "hidden" }}><div style={{ width: `${pr}%`, height: "100%", background: "#22C55E" }} /></div>
+                                  <span style={{ fontSize: 10.5, color: COLORS.muted }}>{pr}%</span>
+                                </td>
+                                <td style={{ padding: "7px 10px", color: c.due > 0 ? "#B91C1C" : COLORS.muted, fontWeight: 600 }}>{rs(c.due)}</td>
+                                <td style={{ padding: "7px 10px", color: c.previousDue > 0 ? "#8A5B00" : COLORS.muted, fontWeight: c.previousDue > 0 ? 700 : 400 }}>{c.previousDue > 0 ? rs(c.previousDue) : "—"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p style={{ fontSize: 11, color: COLORS.muted, margin: "6px 0 0" }}>Tap a class to see every student: who has not paid, who paid part, and who still owes from old months.</p>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -352,65 +390,144 @@ export default function RevenuePage() {
           <p style={{ margin: "0 0 10px", fontWeight: 600, color: COLORS.navy }}>Class-wise fee for {periodLabel} — click a card to see students</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12 }}>
             {data.classes.map((c) => (
-              <button key={c.className} onClick={() => setOpenClass(c.className)}
+              <button key={c.className} onClick={() => { setModalFilter("all"); setOpenClass(c.className); }}
                 style={{ ...card, textAlign: "left", cursor: "pointer", padding: "14px 16px" }}>
                 <p style={{ margin: "0 0 6px", fontSize: 13.5, fontWeight: 600, color: COLORS.navy }}>{c.label}</p>
                 <p style={{ margin: "0 0 2px", fontSize: 12, color: COLORS.muted }}>Collected</p>
                 <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: "#15803D" }}>{rs(c.collected)}</p>
-                <p style={{ margin: "0 0 2px", fontSize: 12, color: COLORS.muted }}>Due</p>
+                <p style={{ margin: "0 0 2px", fontSize: 12, color: COLORS.muted }}>{month === "all" ? "Due" : `Due · ${MONTH_LABELS[Number(month) - 1]} fee`}</p>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: c.due > 0 ? "#B91C1C" : COLORS.muted }}>{rs(c.due)}</p>
-                {c.previousDue > 0 && <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "#8A5B00" }}>+ {rs(c.previousDue)} old dues</p>}
-                <p style={{ margin: "6px 0 0", fontSize: 11.5, color: COLORS.muted }}>{c.students.length} student(s) pending</p>
+                {c.previousDue > 0 && (
+                  <p style={{ margin: "6px 0 0", fontSize: 11.5, fontWeight: 600, color: "#8A5B00", background: "#FCEFD6", borderRadius: 4, padding: "3px 6px", display: "inline-block" }}>
+                    Old month fee included · {rs(c.previousDue)}{c.oldMonths?.length ? ` (${c.oldMonths.join(", ")})` : ""}
+                  </p>
+                )}
+                <p style={{ margin: "6px 0 0", fontSize: 11.5, color: COLORS.muted }}>
+                  <b style={{ color: c.students.length > 0 ? "#B91C1C" : COLORS.muted }}>{c.students.length}</b> student(s) unpaid
+                  {c.students.length > 0 && <> · tap for list</>}
+                </p>
               </button>
             ))}
           </div>
         </>
       )}
 
-      {/* Due students modal */}
-      {modalClass && (
-        <div onClick={() => setOpenClass(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(12,18,48,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
-          <div onClick={(e) => e.stopPropagation()}
-            style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 900, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: `1px solid ${COLORS.border}` }}>
-              <div>
-                <p style={{ margin: 0, fontWeight: 600, fontSize: 16, color: COLORS.navy }}>{modalClass.label} — Pending Dues ({periodLabel})</p>
-                <p style={{ margin: "2px 0 0", fontSize: 12.5, color: COLORS.muted }}>Total due: <b style={{ color: "#B91C1C" }}>{rs(modalClass.due)}</b> · {modalClass.students.length} student(s)</p>
+      {/* Due students modal — same numbers as the card, nobody missing */}
+      {modalClass && (() => {
+        // (demo data has fewer fields — fill the gaps so it never breaks)
+        const all = modalClass.students.map((x) => ({ oldDue: 0, oldMonths: [], lastPaidOn: "", total: x.due, status: x.paid > 0 ? "partial" : "unpaid", ...x }));
+        const counts = {
+          all: all.length,
+          unpaid: all.filter((x) => x.status === "unpaid").length,
+          partial: all.filter((x) => x.status === "partial").length,
+          old: all.filter((x) => x.oldDue > 0).length,
+        };
+        const shown = all.filter((x) => modalFilter === "all" ? true : modalFilter === "old" ? x.oldDue > 0 : x.status === modalFilter);
+        const sumTotal = all.reduce((t, x) => t + x.total, 0);
+        const badge = { unpaid: ["Not paid", "#791F1F", "#FCEBEB"], partial: ["Partly paid", "#8A5B00", "#FCEFD6"], old: ["Old dues only", "#5B3B00", "#F6E3B8"] };
+        const fmtD = (d) => (d ? new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }) : "—");
+        const exportCsv = () => {
+          const rows = [["Student", "Father", "Class", "Fee", "Paid", "This month due", "Old dues", "Old dues months", "Total pending", "Last paid", "Phone"],
+            ...shown.map((x) => [x.name, x.fatherName, modalClass.label, x.monthlyFee, x.paid, x.due, x.oldDue, x.oldMonths.join(" "), x.total, x.lastPaidOn, x.phone])];
+          const text = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+          const a2 = document.createElement("a");
+          a2.href = URL.createObjectURL(new Blob(["\ufeff" + text], { type: "text/csv;charset=utf-8" }));
+          a2.download = `${modalClass.label}-pending-fees-${periodLabel}.csv`.replace(/\s+/g, "-");
+          a2.click();
+        };
+        return (
+          <div onClick={() => setOpenClass(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(12,18,48,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 12, zIndex: 50 }}>
+            <div onClick={(e) => e.stopPropagation()}
+              style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 980, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "14px 18px", borderBottom: `1px solid ${COLORS.border}` }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: COLORS.navy }}>{modalClass.label} — Pending fees ({periodLabel})</p>
+                  <p style={{ margin: "3px 0 0", fontSize: 12.5, color: COLORS.muted }}>
+                    {month === "all" ? "Whole year view — old dues are shown only when one month is selected." : `Fee of ${MONTH_LABELS[Number(month) - 1]} plus anything still unpaid from earlier months.`}
+                  </p>
+                </div>
+                <button onClick={() => setOpenClass(null)} style={{ border: "none", background: COLORS.tint, borderRadius: 6, width: 32, height: 32, fontSize: 18, cursor: "pointer" }}>×</button>
               </div>
-              <button onClick={() => setOpenClass(null)} style={{ border: "none", background: COLORS.tint, borderRadius: 6, width: 32, height: 32, fontSize: 18, cursor: "pointer" }}>×</button>
-            </div>
-            <div style={{ overflow: "auto", padding: "0 4px 8px" }}>
-              {modalClass.students.length === 0 ? (
-                <p style={{ padding: 24, fontSize: 13.5, color: COLORS.muted }}>This class has no dues. 🎉</p>
-              ) : (
-                <table style={{ width: "100%", minWidth: 700, borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: COLORS.tint, textAlign: "left", color: COLORS.navy, position: "sticky", top: 0 }}>
-                      {["Student Name", "Father Name", "Class", "Monthly Fee", "Paid", "Due", "Phone"].map((h) => (
-                        <th key={h} style={{ padding: "10px 12px", fontWeight: 600 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalClass.students.map((s) => (
-                      <tr key={s.id} style={{ borderTop: `1px solid ${COLORS.border}` }}>
-                        <td style={{ padding: "9px 12px" }}>{s.name}</td>
-                        <td style={{ padding: "9px 12px" }}>{s.fatherName || "—"}</td>
-                        <td style={{ padding: "9px 12px" }}>{modalClass.label}</td>
-                        <td style={{ padding: "9px 12px" }}>{rs(s.monthlyFee)}</td>
-                        <td style={{ padding: "9px 12px", color: "#15803D" }}>{rs(s.paid)}</td>
-                        <td style={{ padding: "9px 12px", color: "#B91C1C", fontWeight: 600 }}>{rs(s.due)}</td>
-                        <td style={{ padding: "9px 12px" }}>{s.phone ? <a href={`tel:${s.phone}`} style={{ color: COLORS.navy }}>{s.phone}</a> : "—"}</td>
+
+              <div style={{ padding: "12px 18px 0" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginBottom: 10 }}>
+                  {[
+                    ["Collected", rs(modalClass.collected), "#15803D"],
+                    [month === "all" ? "Due" : `${MONTH_LABELS[Number(month) - 1]} fee due`, rs(modalClass.due), "#B91C1C"],
+                    ["Old dues (earlier months)", rs(modalClass.previousDue || 0), "#8A5B00"],
+                    ["Total pending", rs(sumTotal), "#B91C1C"],
+                  ].map(([l, v, c]) => (
+                    <div key={l} style={{ background: COLORS.tint, borderRadius: 8, padding: "9px 12px" }}>
+                      <p style={{ margin: 0, fontSize: 11, color: COLORS.muted }}>{l}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: c }}>{v}</p>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+                  {[["all", "All"], ["unpaid", "Not paid"], ["partial", "Partly paid"], ["old", "Has old dues"]].map(([k, l]) => (
+                    <button key={k} onClick={() => setModalFilter(k)} style={{ padding: "5px 11px", fontSize: 12, borderRadius: 14, cursor: "pointer", border: `1px solid ${modalFilter === k ? COLORS.navy : COLORS.border}`, background: modalFilter === k ? COLORS.navy : "#fff", color: modalFilter === k ? "#fff" : COLORS.navy }}>
+                      {l} ({counts[k]})
+                    </button>
+                  ))}
+                  <span style={{ flex: 1 }} />
+                  {shown.length > 0 && (
+                    <button onClick={exportCsv} style={{ background: "#fff", border: `1px solid ${COLORS.navy}`, color: COLORS.navy, borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>Download Excel (CSV)</button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ overflow: "auto", padding: "0 6px 8px" }}>
+                {all.length === 0 ? (
+                  <p style={{ padding: 24, fontSize: 13.5, color: COLORS.muted }}>
+                    Every student of {modalClass.label} has paid {month === "all" ? "everything" : `the ${MONTH_LABELS[Number(month) - 1]} fee`} and nothing is pending from earlier months. 🎉
+                  </p>
+                ) : shown.length === 0 ? (
+                  <p style={{ padding: 24, fontSize: 13.5, color: COLORS.muted }}>No student in this group.</p>
+                ) : (
+                  <table style={{ width: "100%", minWidth: 860, borderCollapse: "collapse", fontSize: 12.5 }}>
+                    <thead>
+                      <tr style={{ background: COLORS.tint, textAlign: "left", color: COLORS.navy, position: "sticky", top: 0 }}>
+                        {["Student", "Father", "Fee", "Paid", month === "all" ? "Due" : "This month due", "Old dues", "Total pending", "Last paid", "Phone"].map((h) => (
+                          <th key={h} style={{ padding: "9px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody>
+                      {shown.map((x) => (
+                        <tr key={x.id} style={{ borderTop: `1px solid ${COLORS.border}`, background: x.oldDue > 0 ? "#FFFBF0" : "transparent" }}>
+                          <td style={{ padding: "8px 10px" }}>
+                            <div style={{ fontWeight: 600 }}>{x.name}</div>
+                            <span style={{ fontSize: 10.5, fontWeight: 600, color: badge[x.status][1], background: badge[x.status][2], padding: "2px 7px", borderRadius: 4 }}>{badge[x.status][0]}</span>
+                            {x.oldDue > 0 && (
+                              <span style={{ fontSize: 10.5, fontWeight: 700, color: "#fff", background: "#C2410C", padding: "2px 7px", borderRadius: 4, marginLeft: 4, whiteSpace: "nowrap" }}>Old month fee included</span>
+                            )}
+                          </td>
+                          <td style={{ padding: "8px 10px" }}>{x.fatherName || "—"}</td>
+                          <td style={{ padding: "8px 10px" }}>{rs(x.monthlyFee)}</td>
+                          <td style={{ padding: "8px 10px", color: "#15803D" }}>{rs(x.paid)}</td>
+                          <td style={{ padding: "8px 10px", color: x.due > 0 ? "#B91C1C" : COLORS.muted, fontWeight: 600 }}>{rs(x.due)}</td>
+                          <td style={{ padding: "8px 10px" }}>
+                            {x.oldDue > 0 ? (
+                              <>
+                                <span style={{ color: "#8A5B00", fontWeight: 700 }}>{rs(x.oldDue)}</span>
+                                <div style={{ fontSize: 10.5, color: "#8A5B00" }}>from {x.oldMonths.length ? x.oldMonths.join(", ") : "earlier months"}</div>
+                              </>
+                            ) : "—"}
+                          </td>
+                          <td style={{ padding: "8px 10px", color: "#B91C1C", fontWeight: 700 }}>{rs(x.total)}</td>
+                          <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>{fmtD(x.lastPaidOn)}</td>
+                          <td style={{ padding: "8px 10px" }}>{x.phone ? <a href={`tel:${x.phone}`} style={{ color: COLORS.navy }}>{x.phone}</a> : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </AdminShell>
   );
 }

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { updateDB } from "../../../../lib/data";
 import { SESSION_COOKIE, readSessionValue } from "../../../../lib/auth";
 import { syncAllChallans } from "../../../../lib/feeChallan";
+import { deleteImage } from "../../../../lib/data";
 
 export const dynamic = "force-dynamic";
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -23,6 +24,21 @@ export async function POST() {
   const result = await updateDB((db) => {
     const studentCount = Object.values(db.students || {}).reduce((t, list) => t + list.length, 0);
 
+    // Remember every receipt photo / PDF of the vouchers being wiped, so the
+    // files themselves can be removed from Cloudflare too (otherwise they
+    // would stay there forever with nothing pointing to them).
+    const imageKeys = [];
+    for (const months of Object.values(db.feeChallans || {})) {
+      for (const ch of Object.values(months)) {
+        if (ch.receiptImage) imageKeys.push(ch.receiptImage);
+        if (ch.receiptPdf) imageKeys.push(ch.receiptPdf);
+        for (const h of ch.receiptHistory || []) {
+          if (h.image) imageKeys.push(h.image);
+          if (h.pdf) imageKeys.push(h.pdf);
+        }
+      }
+    }
+
     db.feeChallans = {};
     syncAllChallans(db); // fresh, unpaid, current-month voucher per current student
 
@@ -30,8 +46,13 @@ export async function POST() {
     db.settings.revenueResetAt = new Date().toISOString();
     db.settings.revenueResetBy = session.username;
 
-    return { studentCount };
+    return { studentCount, imageKeys };
   });
+
+  for (const key of new Set(result.imageKeys)) {
+    await deleteImage(key).catch(() => {});
+  }
+  delete result.imageKeys;
 
   return NextResponse.json({ ok: true, ...result }, { headers: NO_STORE });
 }
