@@ -173,6 +173,12 @@ export default function ParentFeeChallanPage() {
                 <span style={{ fontSize: 12, fontWeight: 600, color: statusInfo[challan.status]?.color, background: statusInfo[challan.status]?.bg, padding: "5px 12px", borderRadius: 4 }}>
                   {statusInfo[challan.status]?.label}
                 </span>
+                {challan.status !== "verified" && Number(challan.paidAmount) > 0 && (
+                  <p style={{ fontSize: 13, margin: "10px 0 0", color: COLORS.ink }}>
+                    Received so far: <b style={{ color: "#27500A" }}>Rs. {Number(challan.paidAmount).toLocaleString()}</b> · Balance to pay:{" "}
+                    <b style={{ color: COLORS.red }}>Rs. {Math.max(0, challan.totalDue - Number(challan.paidAmount)).toLocaleString()}</b>
+                  </p>
+                )}
               </div>
             </div>
 

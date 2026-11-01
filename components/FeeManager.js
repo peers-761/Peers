@@ -289,11 +289,44 @@ export default function FeeManager({ onUnauthorized }) {
   }, []);
 
   async function updateStatus(studentId, m, status) {
-    await fetch("/api/receipt-verification", {
+    const res = await fetch("/api/receipt-verification", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ studentId, month: m, status }),
     });
+    if (!res.ok) alert((await res.json().catch(() => ({}))).error || "Could not update.");
+    load();
+  }
+
+  // Part (or full) payment: the parent gave only some of the fee today.
+  async function receivePayment(c) {
+    const paid = Number(c.paidAmount) || 0;
+    const left = Math.max(0, (Number(c.totalDue) || 0) - paid);
+    const input = prompt(
+      `${c.studentName} — ${c.month}\nTotal ${rs(c.totalDue)} · already received ${rs(paid)} · balance ${rs(left)}\n\nHow much did the parent give now? (type ${left} for the full balance)`,
+      String(left)
+    );
+    if (input === null) return;
+    const n = Math.round(Number(String(input).replace(/,/g, "")));
+    if (!Number.isFinite(n) || n <= 0) return alert("Please type a valid amount.");
+    const res = await fetch("/api/receipt-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: c.studentId, month: c.month, addPayment: n }),
+    });
+    if (!res.ok) alert((await res.json().catch(() => ({}))).error || "Could not save the payment.");
+    load();
+  }
+
+  async function undoLastPayment(c) {
+    const last = c.payments?.[c.payments.length - 1];
+    if (!confirm(`Remove the last payment${last ? ` of ${rs(last.amount)}` : ""} for ${c.studentName} (${c.month})? Use this only if it was typed by mistake.`)) return;
+    const res = await fetch("/api/receipt-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: c.studentId, month: c.month, undoLastPayment: true }),
+    });
+    if (!res.ok) alert((await res.json().catch(() => ({}))).error || "Could not undo.");
     load();
   }
 
@@ -450,10 +483,24 @@ export default function FeeManager({ onUnauthorized }) {
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: st?.color, background: st?.bg, padding: "4px 10px", borderRadius: 4 }}>{st?.label}</span>
+                    {c.status !== "verified" && Number(c.paidAmount) > 0 ? (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "#8A5B00", background: "#FCEFD6", padding: "4px 10px", borderRadius: 4 }}>Partly paid</span>
+                    ) : (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: st?.color, background: st?.bg, padding: "4px 10px", borderRadius: 4 }}>{st?.label}</span>
+                    )}
+                    {c.status !== "verified" && (
+                      <button onClick={() => receivePayment(c)} style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 5, padding: "6px 12px", fontSize: 11.5, cursor: "pointer" }}>
+                        Receive payment
+                      </button>
+                    )}
+                    {c.payments?.length > 0 && (c.status !== "verified" || c.payments.length > 1) && (
+                      <button onClick={() => undoLastPayment(c)} style={{ background: "none", border: `1px solid ${COLORS.border}`, color: COLORS.ink, borderRadius: 5, padding: "6px 12px", fontSize: 11.5, cursor: "pointer" }}>
+                        Undo last payment
+                      </button>
+                    )}
                     {c.status !== "verified" && (
                       <button onClick={() => updateStatus(c.studentId, c.month, "verified")} style={{ background: "#27500A", color: "#fff", border: "none", borderRadius: 5, padding: "6px 12px", fontSize: 11.5, cursor: "pointer" }}>
-                        Mark as Paid
+                        {Number(c.paidAmount) > 0 ? "Mark balance as Paid" : "Mark as Paid"}
                       </button>
                     )}
                     {c.status === "pending" && (
@@ -481,6 +528,12 @@ export default function FeeManager({ onUnauthorized }) {
                     Total: <strong>{rs(c.totalDue)}</strong>
                     {c.items?.arrears > 0 && <span style={{ color: COLORS.red }}> (incl. arrears {rs(c.items.arrears)})</span>}
                   </span>
+                  {Number(c.paidAmount) > 0 && (
+                    <span style={{ fontSize: 12.5 }}>
+                      <span style={{ color: "#15803D", fontWeight: 600 }}>Received {rs(c.paidAmount)}</span>
+                      {c.status !== "verified" && <span style={{ color: COLORS.red, fontWeight: 600 }}> · Balance {rs(Math.max(0, (Number(c.totalDue) || 0) - Number(c.paidAmount)))}</span>}
+                    </span>
+                  )}
                   <button
                     onClick={() => setOpenKey(isOpen ? null : key)}
                     style={{ background: isOpen ? COLORS.navy : "none", border: `1px solid ${isOpen ? COLORS.navy : COLORS.border}`, borderRadius: 5, padding: "5px 12px", fontSize: 11.5, cursor: "pointer", color: isOpen ? "#fff" : COLORS.navy }}

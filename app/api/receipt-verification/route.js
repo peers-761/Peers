@@ -102,7 +102,7 @@ export async function POST(req) {
   }
 
   // ---- Single voucher ----
-  const { studentId, month, status, items, resetArrears, paidAmount } = body;
+  const { studentId, month, status, items, resetArrears, paidAmount, addPayment, undoLastPayment } = body;
 
   if (status !== undefined && !["verified", "rejected", "unpaid", "pending"].includes(status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400, headers: NO_STORE });
@@ -131,27 +131,87 @@ export async function POST(req) {
       }
       if (resetArrears) challan.arrearsManual = false;
 
-      // Partial payment: office can record the amount actually received
-      // (e.g. fee 5000, parent paid 3000). Revenue uses this exact amount.
+      // ---- Payment ledger -------------------------------------------------
+      // Every rupee received is written as its own entry (amount, date, who
+      // took it). That is what makes "who paid between date A and date B"
+      // possible, and lets a parent pay half now and the rest later.
+      const nowIso = new Date().toISOString();
+      const ledger = () => {
+        if (!Array.isArray(challan.payments)) {
+          challan.payments = [];
+          const legacy = challan.paidAmount !== undefined && challan.paidAmount !== null && challan.paidAmount !== ""
+            ? Number(challan.paidAmount) || 0
+            : wasVerified ? sumItems(challan.items) : 0;
+          if (legacy > 0) challan.payments.push({ amount: legacy, at: challan.reviewedAt || challan.createdAt || nowIso, by: challan.reviewedBy || "", legacy: true });
+        }
+        return challan.payments;
+      };
+      const paidSum = () => ledger().reduce((t, p) => t + (Number(p.amount) || 0), 0);
+      const pushHistory = (to) => {
+        if (!Array.isArray(challan.statusHistory)) challan.statusHistory = [];
+        if (challan.status !== to) {
+          challan.statusHistory.push({ from: challan.status || "unpaid", to, by: who, at: nowIso });
+          if (challan.statusHistory.length > 30) challan.statusHistory = challan.statusHistory.slice(-30);
+        }
+      };
+
+      // Office records money actually received (part or full).
+      if (addPayment !== undefined) {
+        const n = Math.round(Number(addPayment));
+        if (!Number.isFinite(n) || n <= 0) throw new RouteError(400, "Enter a valid amount received.");
+        const total = sumItems(challan.items);
+        const before = paidSum();
+        if (n > total - before) throw new RouteError(400, `Only Rs. ${Math.max(0, total - before).toLocaleString("en-PK")} is left to pay on this voucher.`);
+        challan.payments.push({ amount: n, at: nowIso, by: who });
+        challan.paidAmount = before + n;
+        challan.reviewedAt = nowIso;
+        challan.reviewedBy = who;
+        if (challan.paidAmount >= total) {
+          pushHistory("verified");
+          challan.status = "verified";
+          if (!wasVerified) justVerified = true;
+        }
+      }
+
+      // Undo the most recent payment only (a wrong amount typed, etc.).
+      if (undoLastPayment) {
+        ledger().pop();
+        const left = paidSum();
+        if (left > 0) challan.paidAmount = left;
+        else delete challan.paidAmount;
+        if (challan.status === "verified" && left < sumItems(challan.items)) {
+          pushHistory("unpaid");
+          challan.status = "unpaid";
+        }
+        challan.reviewedAt = nowIso;
+        challan.reviewedBy = who;
+      }
+
+      // Old direct "set the paid amount" call (kept so nothing else breaks).
       if (paidAmount !== undefined) {
         const n = Number(paidAmount);
         if (!Number.isFinite(n) || n < 0) throw new RouteError(400, "Enter a valid paid amount.");
         challan.paidAmount = Math.round(n);
+        challan.payments = challan.paidAmount > 0 ? [{ amount: challan.paidAmount, at: nowIso, by: who }] : [];
       }
+
       if (status !== undefined) {
-        if (status === "verified" && paidAmount === undefined && challan.paidAmount === undefined) {
-          challan.paidAmount = sumItems(challan.items); // paid in full
+        if (status === "verified") {
+          // "Mark as Paid" = the remaining balance has been received.
+          const total = sumItems(challan.items);
+          const before = paidSum();
+          if (before < total) challan.payments.push({ amount: total - before, at: nowIso, by: who });
+          challan.paidAmount = total;
         }
-        if (status === "unpaid" || status === "rejected") delete challan.paidAmount;
+        if (status === "unpaid" || status === "rejected") {
+          delete challan.paidAmount;
+          challan.payments = [];
+        }
         // Keep a small audit trail so a wrong "Paid" (or its undo) can always
         // be traced: who changed it, when, and from what to what.
-        if (!Array.isArray(challan.statusHistory)) challan.statusHistory = [];
-        if (challan.status !== status) {
-          challan.statusHistory.push({ from: challan.status || "unpaid", to: status, by: who, at: new Date().toISOString() });
-          if (challan.statusHistory.length > 30) challan.statusHistory = challan.statusHistory.slice(-30);
-        }
+        pushHistory(status);
         challan.status = status;
-        challan.reviewedAt = new Date().toISOString();
+        challan.reviewedAt = nowIso;
         challan.reviewedBy = who;
         if (status === "verified" && !wasVerified) justVerified = true;
       }

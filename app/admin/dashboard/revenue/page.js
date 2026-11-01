@@ -10,6 +10,7 @@ import { COLORS } from "../../../../lib/theme";
 import { pktDateStr } from "../../../../lib/time";
 import { MONTH_LABELS } from "../../../../lib/revenue";
 import { demoRevenue } from "../../../../lib/revenueDemo";
+import CollectionReport from "../../../../components/CollectionReport";
 
 const YEAR_COLORS = ["#22C55E", "#F0A500", "#60A5FA"]; // current, last, old
 // The website went live in 2026 — never show years before that (there is
@@ -67,7 +68,7 @@ export default function RevenuePage() {
   const curYear = Number(today.slice(0, 4));
   const curMonth = Number(today.slice(5, 7));
   const [year, setYear] = useState(curYear);
-  const [month, setMonth] = useState("all");
+  const [month, setMonth] = useState(String(curMonth));
   const [demo, setDemo] = useState(false);
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -77,16 +78,23 @@ export default function RevenuePage() {
   // of whatever year/month the admin has filtered the rest of the page to,
   // so "This Month" never goes wrong just because a different year is being browsed.
   const [thisMonth, setThisMonth] = useState(null);
-  const thisMonthCollected = thisMonth ? thisMonth.collected : null;
+  // "Collected this month" = money that actually came in this calendar month
+  // (counted on the day it was received), not the old months' totals.
+  const thisMonthCollected = thisMonth ? thisMonth.received : null;
 
   function loadThisMonth() {
-    fetch(`/api/revenue?year=${curYear}&month=${curMonth}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
+    const mm = String(curMonth).padStart(2, "0");
+    Promise.all([
+      fetch(`/api/revenue?year=${curYear}&month=${curMonth}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/revenue?from=${curYear}-${mm}-01&to=${today}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
+    ])
+      .then(([d, cash]) => {
         const sm = d.summary || {};
         const collected = d.classes?.reduce((t, c) => t + c.collected, 0) ?? 0;
         const due = d.classes?.reduce((t, c) => t + c.due, 0) ?? 0;
         setThisMonth({
+          received: cash?.received ?? 0,
+          previousDue: sm.previousDue ?? 0,
           collected,
           due,
           expected: sm.expected ?? collected + due,
@@ -118,11 +126,11 @@ export default function RevenuePage() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "Could not reset.");
       setYear(curYear);
-      setMonth("all");
+      setMonth(String(curMonth));
       loadThisMonth();
       // Re-trigger the data fetch below with a cache-busting reload.
       setData(null);
-      fetch(`/api/revenue?year=${curYear}&month=all`, { cache: "no-store" })
+      fetch(`/api/revenue?year=${curYear}&month=${curMonth}`, { cache: "no-store" })
         .then(async (r) => { const jj = await r.json(); if (r.ok) setData(jj); })
         .catch(() => {});
     } catch (err) {
@@ -208,12 +216,12 @@ export default function RevenuePage() {
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: COLORS.navy }}>This month — {MONTH_LABELS[curMonth - 1]} {curYear}</p>
                   <span style={{ fontSize: 12, color: COLORS.muted }}>Updates by itself every minute</span>
                 </div>
-                <p style={{ fontSize: 30, fontWeight: 800, color: "#15803D", margin: "8px 0 2px" }}>{rs(thisMonth.collected)}</p>
-                <p style={{ fontSize: 12.5, color: COLORS.muted, margin: "0 0 12px" }}>collected so far this month</p>
+                <p style={{ fontSize: 30, fontWeight: 800, color: "#15803D", margin: "8px 0 2px" }}>{rs(thisMonth.received)}</p>
+                <p style={{ fontSize: 12.5, color: COLORS.muted, margin: "0 0 12px" }}>money received so far this month (1st to today){thisMonth.received === 0 ? " — nobody has paid yet" : ""}</p>
                 <div style={{ height: 10, background: "#E8E6DC", borderRadius: 6, overflow: "hidden", marginBottom: 6 }}>
                   <div style={{ width: `${rate}%`, height: "100%", background: "#22C55E" }} />
                 </div>
-                <p style={{ fontSize: 12.5, color: COLORS.ink, margin: "0 0 14px" }}><b>{rate}%</b> of this month's expected fee ({rs(thisMonth.expected)}) is collected</p>
+                <p style={{ fontSize: 12.5, color: COLORS.ink, margin: "0 0 14px" }}><b>{rate}%</b> of {MONTH_LABELS[curMonth - 1]} fee ({rs(thisMonth.collected)} of {rs(thisMonth.expected)}) is collected{thisMonth.previousDue > 0 ? <> · old dues pending from earlier months: <b style={{ color: "#B91C1C" }}>{rs(thisMonth.previousDue)}</b></> : null}</p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
                   <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 12px" }}>
                     <p style={{ margin: 0, fontSize: 11.5, color: COLORS.muted }}>Still to collect</p>
@@ -235,6 +243,8 @@ export default function RevenuePage() {
               </div>
             );
           })()}
+
+          <CollectionReport />
 
           {/* Summary cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 18 }}>
@@ -339,7 +349,7 @@ export default function RevenuePage() {
           </div>
 
           {/* Class cards */}
-          <p style={{ margin: "0 0 10px", fontWeight: 600, color: COLORS.navy }}>Class-wise Due — click a card to see students</p>
+          <p style={{ margin: "0 0 10px", fontWeight: 600, color: COLORS.navy }}>Class-wise fee for {periodLabel} — click a card to see students</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12 }}>
             {data.classes.map((c) => (
               <button key={c.className} onClick={() => setOpenClass(c.className)}
@@ -349,6 +359,7 @@ export default function RevenuePage() {
                 <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: "#15803D" }}>{rs(c.collected)}</p>
                 <p style={{ margin: "0 0 2px", fontSize: 12, color: COLORS.muted }}>Due</p>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: c.due > 0 ? "#B91C1C" : COLORS.muted }}>{rs(c.due)}</p>
+                {c.previousDue > 0 && <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "#8A5B00" }}>+ {rs(c.previousDue)} old dues</p>}
                 <p style={{ margin: "6px 0 0", fontSize: 11.5, color: COLORS.muted }}>{c.students.length} student(s) pending</p>
               </button>
             ))}
