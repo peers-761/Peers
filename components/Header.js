@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { COLORS } from "../lib/theme";
 
@@ -8,9 +8,31 @@ import { NAV } from "../lib/nav";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const headerRef = useRef(null);
+
+  // Thin reading-progress line under the header (updates once per frame).
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const p = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      headerRef.current?.style.setProperty("--prog", p.toFixed(4));
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   return (
-    <header style={{ borderBottom: `1px solid ${COLORS.border}`, background: COLORS.cream }}>
+    <header ref={headerRef} className="site-header" style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+      <div className="scroll-progress" aria-hidden="true" />
       <div
         style={{
           maxWidth: 1140,

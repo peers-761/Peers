@@ -2,6 +2,9 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import NoticesList from "../components/NoticesList";
 import ScrollReveal from "../components/ScrollReveal";
+import BookCandle from "../components/BookCandle";
+import PhotoChapter from "../components/PhotoChapter";
+import Counter from "../components/Counter";
 import { COLORS } from "../lib/theme";
 import { readDB } from "../lib/data";
 import { FAQS } from "../lib/faqData";
@@ -20,8 +23,10 @@ export default async function HomePage() {
       <Header />
 
       {/* Hero */}
-      <section style={{ background: COLORS.navy, padding: "64px 24px 72px" }}>
-        <div style={{ maxWidth: 1140, margin: "0 auto", display: "flex", gap: 48, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="hero-wrap" style={{ background: COLORS.navy, padding: "64px 24px 72px" }}>
+        <div className="hero-orb a" aria-hidden="true" />
+        <div className="hero-orb b" aria-hidden="true" />
+        <div style={{ position: "relative", maxWidth: 1140, margin: "0 auto", display: "flex", gap: 48, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 480px", minWidth: 300 }}>
             <p className="fade-up-in" style={{ animationDelay: "0s", fontSize: 13, color: COLORS.gold, fontWeight: 600, letterSpacing: 0.4, margin: "0 0 14px" }}>
               WE TAKE YOU ALONG
@@ -62,8 +67,16 @@ export default async function HomePage() {
               </a>
             </div>
           </div>
+
+          <div className="hero-collage" aria-hidden="true">
+            <figure className="hero-photo p1"><img src="/physics-class.jpg" alt="" /></figure>
+            <figure className="hero-photo p2"><img src="/chemistry-lab.jpg" alt="" /></figure>
+          </div>
         </div>
       </section>
+
+      {/* The story: a book opens and a candle is lit as you scroll */}
+      <BookCandle foundingYear={FOUNDING_YEAR} />
 
       {/* Leadership */}
       <section style={{ maxWidth: 1140, margin: "0 auto", padding: "64px 24px" }}>
@@ -117,12 +130,12 @@ export default async function HomePage() {
           </ScrollReveal>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
             {[
-              ["Est. " + FOUNDING_YEAR, "Serving Shadbagh, Lahore"],
+              [<><Counter end={new Date().getFullYear() - FOUNDING_YEAR} suffix="+" /> years</>, "Serving Shadbagh, Lahore since " + FOUNDING_YEAR],
+              [<><Counter end={13} /> classes</>, "From PG to 10th (Matric)"],
+              [<><Counter end={2} /> programs</>, "Morning school and evening academy"],
               ["Board Toppers", "Produced year after year"],
-              ["Master's-Qualified", "Teacher for every subject"],
-              ["AC Classrooms", "Premium learning environment"],
             ].map(([big, small], i) => (
-              <ScrollReveal key={big} delay={0.1 + i * 0.1} direction="scale">
+              <ScrollReveal key={i} delay={0.1 + i * 0.1} direction="scale">
                 <div className="photo-card" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "16px 14px" }}>
                   <p style={{ fontFamily: "'Lora', serif", fontSize: 17, fontWeight: 600, color: COLORS.gold, margin: "0 0 4px" }}>{big}</p>
                   <p style={{ fontSize: 12, color: "#C6CBE0", margin: 0 }}>{small}</p>
@@ -170,7 +183,7 @@ export default async function HomePage() {
       </section>
 
       {/* Sports, practicals, and quality education */}
-      <section style={{ background: COLORS.tint, padding: "64px 24px" }}>
+      <section className="pc-section" style={{ background: COLORS.tint, padding: "64px 24px 72px" }}>
         <div style={{ maxWidth: 1140, margin: "0 auto" }}>
           <ScrollReveal>
             <h2 style={{ fontFamily: "'Lora', serif", fontWeight: 600, fontSize: 25, color: COLORS.navy, margin: "0 0 8px" }}>
@@ -180,18 +193,17 @@ export default async function HomePage() {
               A look at what learning looks like day-to-day at PEERS.
             </p>
           </ScrollReveal>
+          <div style={{ height: 40 }} />
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 36 }}>
-            <ScrollReveal delay={0}>
-              <img className="photo-card" src="/sports.jpg" alt="Students playing cricket with their coach" style={{ width: "100%", height: 240, objectFit: "cover", display: "block", borderRadius: 8 }} />
-            </ScrollReveal>
-            <ScrollReveal delay={0.12}>
-              <img className="photo-card" src="/physics-class.jpg" alt="Physics class in session" style={{ width: "100%", height: 240, objectFit: "cover", display: "block", borderRadius: 8 }} />
-            </ScrollReveal>
-            <ScrollReveal delay={0.24}>
-              <img className="photo-card" src="/chemistry-lab.jpg" alt="Students doing a chemistry experiment" style={{ width: "100%", height: 240, objectFit: "cover", display: "block", borderRadius: 8 }} />
-            </ScrollReveal>
-          </div>
+          <PhotoChapter side="left" src="/sports.jpg" alt="Students playing cricket with their coach" title="Sport is part of the school day">
+            <p>Our students train on a real sports ground under qualified coaches, because confidence and teamwork are taught as deliberately as the syllabus.</p>
+          </PhotoChapter>
+          <PhotoChapter side="right" src="/chemistry-lab.jpg" alt="Students in an air-conditioned PEERS classroom" title="Classrooms built for focus">
+            <p>Every classroom is air-conditioned, and every subject is taught by a teacher with a Master&apos;s degree in that subject, so a child can concentrate on understanding, in every season.</p>
+          </PhotoChapter>
+          <PhotoChapter side="left" src="/physics-class.jpg" alt="Students doing a chemistry experiment in the science lab" title="Experiments, not just textbooks">
+            <p>Children run their own experiments in fully equipped science labs, so curiosity turns into understanding they can explain back to you.</p>
+          </PhotoChapter>
 
           <ScrollReveal>
             <div style={{ maxWidth: 760 }}>
