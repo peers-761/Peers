@@ -10,6 +10,7 @@
 
 import { useEffect, useRef } from "react";
 import "./BookCandle.css";
+import { isLite } from "../lib/perf";
 
 // Deterministic "random" so the server and the browser draw the same specks.
 function specks(n) {
@@ -27,10 +28,10 @@ function specks(n) {
     };
   });
 }
-const SPECKS = specks(22);
+const SPECKS = specks(9);
 
 const Ln = ({ i, h, children }) => (
-  <span className={`ln${h ? " h" : ""}`} style={{ "--i": i }}>{children}</span>
+  <span className={`ln${h ? " h" : ""}`} data-i={i}>{children}</span>
 );
 
 export default function BookCandle({ foundingYear = 2010 }) {
@@ -41,6 +42,15 @@ export default function BookCandle({ foundingYear = 2010 }) {
   useEffect(() => {
     const el = track.current;
     if (!el) return;
+    const $ = (sel) => el.querySelector(sel);
+    const bk = $(".bk"), cover = $(".leaf.cover"), turn = $(".leaf.turn"), baseL = $(".bk-base.l");
+    const candleEl = $(".candle"), flameWrap = $(".c-flamewrap"), glow = $(".bc-glow"), hint = $(".bc-hint");
+    const groups = { w1: [], w2: [] };
+    el.querySelectorAll(".pgtxt").forEach((box) => {
+      const g = box.dataset.g;
+      box.querySelectorAll(".ln").forEach((ln) => groups[g].push({ ln, i: Number(ln.dataset.i) }));
+    });
+    if (isLite()) el.classList.add("lite");
 
     const resize = () => {
       const f = fit.current;
@@ -53,8 +63,53 @@ export default function BookCandle({ foundingYear = 2010 }) {
     resize();
     window.addEventListener("resize", resize);
 
+    const clamp = (v) => Math.min(1, Math.max(0, v));
+    const ease = (t) => t * t * (3 - 2 * t);
+    const ramp = (p, a, b) => clamp((p - a) / (b - a));
+    const last = {};
+    const set = (key, v, fn) => {
+      if (last[key] !== undefined && Math.abs(last[key] - v) < 0.0007) return;
+      last[key] = v;
+      fn(v);
+    };
+    const writeGroup = (key, w) =>
+      set(key, w, () => {
+        groups[key].forEach(({ ln, i }) => {
+          const v = clamp(w * 7 - i + 0.2);
+          ln.style.opacity = v.toFixed(3);
+          ln.style.transform = v >= 1 ? "none" : `translateY(${((1 - v) * 8).toFixed(2)}px)`;
+        });
+      });
+
+    // One number (p, 0 to 1) in -> a handful of transforms and opacities out.
+    const apply = (p) => {
+      const c = ease(ramp(p, 0, 0.28));
+      const candle = ease(ramp(p, 0.4, 0.54));
+      const flame = ease(ramp(p, 0.52, 0.62));
+      const t = ease(ramp(p, 0.66, 0.82));
+      set("c", c, () => {
+        bk.style.transform = `rotateX(26deg) translateX(${((1 - c) * -125).toFixed(2)}px)`;
+        cover.style.transform = `rotateY(${(-180 * c).toFixed(2)}deg) translateZ(2px)`;
+        baseL.style.opacity = Math.min(1, c * 5).toFixed(3);
+      });
+      set("t", t, () => { turn.style.transform = `rotateY(${(-180 * t).toFixed(2)}deg) translateZ(1px)`; });
+      set("candle", candle, () => {
+        candleEl.style.opacity = candle.toFixed(3);
+        candleEl.style.transform = `translateY(${((1 - candle) * -46).toFixed(2)}px)`;
+      });
+      set("flame", flame, () => {
+        flameWrap.style.transform = `scale(${flame.toFixed(3)})`;
+        glow.style.opacity = (flame * 0.95).toFixed(3);
+        bk.style.setProperty("--flame", flame.toFixed(3)); // warm light on the pages
+      });
+      set("hint", clamp(1 - p * 14), (v) => { hint.style.opacity = v.toFixed(3); });
+      writeGroup("w1", ramp(p, 0.28, 0.45));
+      writeGroup("w2", ramp(p, 0.8, 0.96));
+    };
+    apply(0);
+
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      el.style.setProperty("--p", "1");
+      apply(1);
       return () => window.removeEventListener("resize", resize);
     }
 
@@ -62,34 +117,39 @@ export default function BookCandle({ foundingYear = 2010 }) {
     let raf = 0;
     let active = false;
     const frame = () => {
+      raf = 0;
       const r = el.getBoundingClientRect();
       const total = Math.max(1, r.height - window.innerHeight);
-      const target = Math.min(1, Math.max(0, -r.top / total));
-      cur += (target - cur) * 0.12;
-      if (Math.abs(target - cur) < 0.0004) cur = target;
-      el.style.setProperty("--p", cur.toFixed(4));
-      if (active) raf = requestAnimationFrame(frame);
+      const target = clamp(-r.top / total);
+      cur += (target - cur) * 0.14;
+      if (Math.abs(target - cur) < 0.0005) cur = target;
+      apply(cur);
+      // Keep looping only while there is still something to catch up on.
+      if (active && cur !== target) raf = requestAnimationFrame(frame);
     };
-    // Only animate while the section is on (or near) the screen.
+    const onScroll = () => {
+      if (active && !raf) raf = requestAnimationFrame(frame);
+    };
     const io = new IntersectionObserver(
       ([entry]) => {
         active = entry.isIntersecting;
-        cancelAnimationFrame(raf);
-        if (active) raf = requestAnimationFrame(frame);
+        if (active) onScroll();
       },
       { rootMargin: "200px 0px" }
     );
     io.observe(el);
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
       io.disconnect();
       cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", resize);
     };
   }, []);
 
   return (
-    <section ref={track} className="bc-track" style={{ "--p": 0 }} aria-label="The PEERS story">
+    <section ref={track} className="bc-track" aria-label="The PEERS story">
       <div className="bc-stage">
         <div ref={title} className="bc-title">
           <h2>Learning, lit one page at a time</h2>
@@ -110,7 +170,8 @@ export default function BookCandle({ foundingYear = 2010 }) {
 
               {/* Right page, revealed once the turning page has gone */}
               <div className="pg r">
-                <div className="pgtxt" style={{ "--w": "var(--w2)" }}>
+                <div className="lit" />
+                <div className="pgtxt" data-g="w2">
                   <Ln i={0} h>Parents in touch</Ln>
                   <Ln i={1}>Attendance, fee vouchers,</Ln>
                   <Ln i={2}>results and notices reach</Ln>
@@ -123,7 +184,8 @@ export default function BookCandle({ foundingYear = 2010 }) {
               {/* The page that turns */}
               <div className="leaf turn">
                 <div className="face paper f">
-                  <div className="pgtxt" style={{ "--w": "var(--w1)" }}>
+                  <div className="lit" />
+                  <div className="pgtxt" data-g="w1">
                     <Ln i={0} h>Two chapters</Ln>
                     <Ln i={1}>School: 8 AM to 2 PM.</Ln>
                     <Ln i={2}>Primal Academy: 3 PM</Ln>
@@ -132,7 +194,8 @@ export default function BookCandle({ foundingYear = 2010 }) {
                   </div>
                 </div>
                 <div className="face paper b back">
-                  <div className="pgtxt" style={{ "--w": "var(--w2)" }}>
+                  <div className="lit rt" />
+                  <div className="pgtxt" data-g="w2">
                     <Ln i={0} h>Our promise</Ln>
                     <Ln i={1}>A Master&apos;s-qualified</Ln>
                     <Ln i={2}>teacher in every subject,</Ln>
@@ -148,14 +211,15 @@ export default function BookCandle({ foundingYear = 2010 }) {
                 <div className="face leather">
                   <div className="cv-frame" />
                   <div className="cv-inner">
-                    <div className="cv-orn" />
+                    <div className="cv-plate"><img src="/emblem.png" alt="" /></div>
                     <div className="t1 foil">PEERS</div>
                     <div className="t2 foil">The Education System</div>
                     <div className="t3">We take you along</div>
                   </div>
                 </div>
                 <div className="face paper b back">
-                  <div className="pgtxt" style={{ "--w": "var(--w1)" }}>
+                  <div className="lit rt" />
+                  <div className="pgtxt" data-g="w1">
                     <Ln i={0} h>Our story</Ln>
                     <Ln i={1}>Founded in {foundingYear} in</Ln>
                     <Ln i={2}>Shadbagh, Lahore, from</Ln>
@@ -178,6 +242,7 @@ export default function BookCandle({ foundingYear = 2010 }) {
           {/* The candle on the spine */}
           <div className="candle">
             <div className="c-flamewrap">
+              <div className="c-halo" />
               <div className="c-flame">
                 <svg viewBox="0 0 34 64">
                   <defs>

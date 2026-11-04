@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { COLORS } from "../lib/theme";
 import { NAV } from "../lib/nav";
 import AnimatedUnderline from "./AnimatedUnderline";
+import Icon from "./Icon";
 
 const SOCIALS = [
   {
@@ -108,8 +109,8 @@ export default function Footer() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
                 {NAV.map((n) => (
-                  <a key={n.href} href={n.href} style={{ fontSize: 14.5, color: "#DCE0F0", textDecoration: "none" }}>
-                    {n.label}
+                  <a key={n.href} href={n.href} className="ft-link" style={{ fontSize: 14.5, color: "#DCE0F0", textDecoration: "none" }}>
+                    <Icon name="arrow" size={14} />{n.label}
                   </a>
                 ))}
               </div>
@@ -120,9 +121,9 @@ export default function Footer() {
                 Contact
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-                {settings.address && <p style={{ fontSize: 14, color: "#DCE0F0", margin: 0, lineHeight: 1.6 }}>{settings.address}</p>}
-                {settings.phone && <p style={{ fontSize: 14, color: "#DCE0F0", margin: 0 }}>{settings.phone}</p>}
-                {settings.email && <p style={{ fontSize: 14, color: "#DCE0F0", margin: 0 }}>{settings.email}</p>}
+                {settings.address && <p className="ft-line" style={{ fontSize: 14, color: "#DCE0F0", margin: 0, lineHeight: 1.6 }}><Icon name="pin" size={17} />{settings.address}</p>}
+                {settings.phone && <p className="ft-line" style={{ fontSize: 14, color: "#DCE0F0", margin: 0 }}><Icon name="call" size={17} />{settings.phone}</p>}
+                {settings.email && <p className="ft-line" style={{ fontSize: 14, color: "#DCE0F0", margin: 0 }}><Icon name="mail" size={17} />{settings.email}</p>}
                 {!settings.phone && !settings.address && (
                   <p style={{ fontSize: 13, color: "#8A8FB0", margin: 0 }}>
                     Contact details will be added soon.
